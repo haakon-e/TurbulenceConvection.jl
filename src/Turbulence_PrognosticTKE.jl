@@ -5,15 +5,16 @@ function initialize(
     GMV::GridMeanVariables,
     Ref::ReferenceState,
     TS::TimeStepping,
+    Stats,
 )
     if Case.casename == "DryBubble"
         initialize_DryBubble(self, self.UpdVar, GMV, Ref)
     else
-        initialize(self, self.UpdVar, GMV)
+        initialize(self, self.UpdVar, GMV, Case, TS, Stats)
     end
     decompose_environment(self, GMV)
     saturation_adjustment(self.EnvThermo, self.EnvVar)
-    buoyancy(self.UpdThermo, self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
+    buoyancy(self.UpdThermo, self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy, self, Case, TS, Stats)
     update_inversion(self, GMV, Case.inversion_option)
     self.wstar = get_wstar(Case.Sur.bflux, self.zi)
     microphysics(self.EnvThermo, self.EnvVar, self.Rain, TS.dt)
@@ -63,6 +64,24 @@ function initialize_io(self::EDMF_PrognosticTKE, Stats::NetCDFIO_Stats)
     add_profile(Stats, "updraft_qt_precip")
     add_profile(Stats, "updraft_thetal_precip")
     # Diff mixing lengths: Ignacio
+    add_profile(Stats, "QT_en")
+    add_profile(Stats, "B_en")
+    add_profile(Stats, "frac_turb_entr")
+    add_profile(Stats, "entr_sc")
+    add_profile(Stats, "detr_sc")
+    add_profile(Stats, "w_up")
+    add_profile(Stats, "w_up_new")
+
+    add_profile(Stats, "tke_values")
+    add_profile(Stats, "updraft_buoyancy_values")
+    add_profile(Stats, "T_values")
+    add_profile(Stats, "QT_values")
+    add_profile(Stats, "QL_values")
+    add_profile(Stats, "RH_values")
+    add_profile(Stats, "H_values")
+    add_profile(Stats, "Area_values")
+    add_profile(Stats, "Area_values_new")
+
     add_profile(Stats, "ed_length_scheme")
     add_profile(Stats, "mixing_length_ratio")
     add_profile(Stats, "entdet_balance_length")
@@ -184,8 +203,26 @@ function io(self::EDMF_PrognosticTKE, Stats::NetCDFIO_Stats, TS::TimeStepping)
     write_profile(Stats, "total_flux_h", mf_h[cinterior] .+ self.diffusive_flux_h[cinterior])
     write_profile(Stats, "total_flux_qt", mf_qt[cinterior] .+ self.diffusive_flux_qt[cinterior])
     write_profile(Stats, "mixing_length", self.mixing_length[cinterior])
-    write_profile(Stats, "updraft_qt_precip", self.UpdThermo.prec_source_qt_tot[cinterior])
     write_profile(Stats, "updraft_thetal_precip", self.UpdThermo.prec_source_h_tot[cinterior])
+
+    write_profile(Stats, "updraft_qt_precip", self.UpdThermo.prec_source_qt_tot[cinterior])
+
+    write_profile(Stats, "QT_en", self.EnvVar.QT.values[cinterior])
+    write_profile(Stats, "B_en", self.EnvVar.B.values[cinterior])
+    write_profile(Stats, "frac_turb_entr", self.frac_turb_entr[1, cinterior])
+    write_profile(Stats, "entr_sc", self.entr_sc[1, cinterior])
+    write_profile(Stats, "detr_sc", self.detr_sc[1, cinterior])
+    write_profile(Stats, "w_up", self.UpdVar.W.values[1, finterior])
+    write_profile(Stats, "w_up_new", self.UpdVar.W.new[1, finterior])
+    write_profile(Stats, "tke_values", self.EnvVar.TKE.values[cinterior])
+    write_profile(Stats, "updraft_buoyancy_values", self.UpdVar.B.values[1,cinterior])
+    write_profile(Stats, "T_values", self.UpdVar.T.values[1,cinterior])
+    write_profile(Stats, "QT_values", self.UpdVar.QT.values[1,cinterior])
+    write_profile(Stats, "QL_values", self.UpdVar.QL.values[1,cinterior])
+    write_profile(Stats, "RH_values", self.UpdVar.RH.values[1,cinterior])
+    write_profile(Stats, "H_values", self.UpdVar.H.values[1,cinterior])
+    write_profile(Stats, "Area_values", self.UpdVar.Area.values[1,cinterior])
+    write_profile(Stats, "Area_values_new", self.UpdVar.Area.new[1,cinterior])
 
     #Different mixing lengths : Ignacio
     write_profile(Stats, "ed_length_scheme", self.mls[cinterior])
@@ -316,7 +353,7 @@ function compute_gm_tendencies!(grid, Case, GMV, Ref, TS)
 end
 
 # Perform the update of the scheme
-function update(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBase, TS::TimeStepping)
+function update(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBase, TS::TimeStepping, Stats::NetCDFIO_Stats)
 
     grid = get_grid(self)
     ref_state = reference_state(self)
@@ -333,7 +370,7 @@ function update(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBas
     compute_updraft_closures(self, GMV, Case)
     compute_eddy_diffusivities_tke(self, GMV, Case)
     compute_GMV_MF(self, GMV, TS)
-    compute_covariance_rhs(self, GMV, Case, TS)
+    compute_covariance_rhs(self, GMV, Case, TS, Stats)
 
     # compute tendencies
     compute_gm_tendencies!(grid, Case, GMV, self.Ref, TS)
@@ -344,7 +381,8 @@ function update(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBas
     set_updraft_surface_bc(self, GMV, Case)
 
     # update
-    solve_updraft(self, GMV, TS)
+    # export_all(Case, self, GMV, TS, Stats)
+    solve_updraft(self, GMV, TS, Case, Stats)
     @inbounds for k in real_center_indices(grid)
         @inbounds for i in xrange(self.n_updrafts)
             # saturation adjustment
@@ -353,7 +391,7 @@ function update(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBas
             self.UpdVar.T.values[i, k] = sa.T
         end
     end
-    update_GMV_ED(self, GMV, Case, TS)
+    update_GMV_ED(self, GMV, Case, TS, Stats)
     update_covariance(self, GMV, Case, TS)
     update_GMV_turbulence(self, GMV, Case, TS)
 
@@ -383,7 +421,7 @@ function update(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBas
     zero_area_fraction_cleanup(self, GMV)
     decompose_environment(self, GMV)
     saturation_adjustment(self.EnvThermo, self.EnvVar)
-    buoyancy(self.UpdThermo, self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
+    buoyancy(self.UpdThermo, self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy, self, Case, TS, Stats)
 
     update(GMV, TS)
     return
@@ -897,7 +935,7 @@ function zero_area_fraction_cleanup(self::EDMF_PrognosticTKE, GMV::GridMeanVaria
     return
 end
 
-function solve_updraft(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, TS::TimeStepping)
+function solve_updraft(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, TS::TimeStepping, Case, Stats)
     grid = get_grid(self)
     param_set = parameter_set(GMV)
     ref_state = reference_state(self)
@@ -982,8 +1020,17 @@ function solve_updraft(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, TS::Tim
                     a_up_new[i, k + 1] = 0
                 end
             end
+            # if TS.i_iter == 591
+            #     c1 = anew_k >= self.minimum_area
+            #     c2 = w_up_new[i, k] <= 0.0
+            #     c3 = !(k + 1 > size(a_up_new, 2))
+            #     if c3
+            #         @show k, c1, c2, c3, a_up_new[i, k]
+            #     end
+            # end
         end
     end
+    export_all(Case, self, GMV, TS, Stats)
 
     # Solve for θ_liq_ice & q_tot
     @inbounds for k in real_center_indices(grid)
@@ -1105,7 +1152,7 @@ end
 # Update the grid mean variables with the tendency due to eddy diffusion
 # Km and Kh have already been updated
 # 2nd order finite differences plus implicit time step allows solution with tridiagonal matrix solver
-function update_GMV_ED(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBase, TS::TimeStepping)
+function update_GMV_ED(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBase, TS::TimeStepping, Stats)
     grid = get_grid(self)
     nzg = grid.nzg
     nz = grid.nz
@@ -1270,7 +1317,7 @@ function update_GMV_diagnostics(self::EDMF_PrognosticTKE, GMV::GridMeanVariables
     return
 end
 
-function compute_covariance_rhs(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBase, TS::TimeStepping)
+function compute_covariance_rhs(self::EDMF_PrognosticTKE, GMV::GridMeanVariables, Case::CasesBase, TS::TimeStepping, Stats)
 
     gm = GMV
     up = self.UpdVar
@@ -1279,7 +1326,7 @@ function compute_covariance_rhs(self::EDMF_PrognosticTKE, GMV::GridMeanVariables
     compute_covariance_shear(self, gm, en.TKE, up.W.values, up.W.values, en.W.values, en.W.values)
     compute_covariance_interdomain_src(self, up.Area, up.W, up.W, en.W, en.W, en.TKE)
     compute_tke_pressure(self)
-    compute_covariance_entr(self, en.Hvar, up.H, up.H, en.H, en.H, gm.H, gm.H)
+    compute_covariance_entr(self, en.Hvar, up.H, up.H, en.H, en.H, gm.H, gm.H, true)
     compute_covariance_entr(self, en.QTvar, up.QT, up.QT, en.QT, en.QT, gm.QT, gm.QT)
     compute_covariance_entr(self, en.HQTcov, up.H, up.QT, en.H, en.QT, gm.H, gm.QT)
     compute_covariance_shear(self, gm, en.Hvar, up.H.values, up.H.values, en.H.values, en.H.values)
@@ -1488,6 +1535,7 @@ function compute_covariance_entr(
     EnvVar2::EnvironmentVariable,
     GmvVar1::VariablePrognostic,
     GmvVar2::VariablePrognostic,
+    debug = false,
 )
 
     grid = get_grid(self)

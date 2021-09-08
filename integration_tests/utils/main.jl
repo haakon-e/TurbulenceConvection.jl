@@ -38,8 +38,9 @@ function TurbulenceConvection.initialize(self::Simulation1d, namelist)
     Cases.initialize_forcing(self.Case, self.Gr, self.Ref, self.GMV)
     Cases.initialize_radiation(self.Case, self.Gr, self.Ref, self.GMV)
 
-    TC.initialize(self.Turb, self.Case, self.GMV, self.Ref, self.TS)
     TC.initialize_io(self)
+
+    TC.initialize(self.Turb, self.Case, self.GMV, self.Ref, self.TS, self.Stats)
     TC.io(self)
 
     return
@@ -48,9 +49,10 @@ end
 function run(self::Simulation1d)
     TC = TurbulenceConvection
     iter = 0
-    TC.open_files(self.Stats) # #removeVarsHack
+    # TC.open_files(self.Stats) # #removeVarsHack
     while self.TS.t <= self.TS.t_max
-        TC.update(self.Turb, self.GMV, self.Case, self.TS)
+        # TC.export_all(self.Case, self.Turb, self.GMV, self.TS, self.Stats)
+        TC.update(self.Turb, self.GMV, self.Case, self.TS, self.Stats)
         TC.update(self.TS)
 
         if mod(iter, 100) == 0
@@ -62,14 +64,15 @@ function run(self::Simulation1d)
             # https://github.com/Alexander-Barth/NCDatasets.jl/issues/135
             # opening/closing files every step should be okay. #removeVarsHack
             # TurbulenceConvection.io(self) # #removeVarsHack
-            TC.write_simulation_time(self.Stats, self.TS.t) # #removeVarsHack
-            TC.io(self.GMV, self.Stats) # #removeVarsHack
-            TC.io(self.Case, self.Stats) # #removeVarsHack
-            TC.io(self.Turb, self.Stats, self.TS) # #removeVarsHack
+            # TC.write_simulation_time(self.Stats, self.TS.t) # #removeVarsHack
+            # TC.io(self.GMV, self.Stats) # #removeVarsHack
+            # TC.io(self.Case, self.Stats) # #removeVarsHack
+            # TC.io(self.Turb, self.Stats, self.TS) # #removeVarsHack
         end
+        self.TS.i_iter += 1
         iter += 1
     end
-    TC.close_files(self.Stats) # #removeVarsHack
+    # TC.close_files(self.Stats) # #removeVarsHack
     return
 end
 

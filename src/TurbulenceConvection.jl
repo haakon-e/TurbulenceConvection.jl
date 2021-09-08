@@ -26,6 +26,30 @@ const CPMP = CP.Atmos.Microphysics
 const CPEDMF = CP.Atmos.EDMF
 const CPSGS = CP.Atmos.SubgridScale
 
+function export_all(Case, Turb, GMV, TS, Stats)
+    # if TS.i_iter == 580
+    # if TS.i_iter == 590
+    if TS.i_iter == 100
+    # if TS.i_iter == 592
+    # if TS.i_iter == 595
+    # if TS.i_iter == 600
+        println("------- inside export_all")
+        @show Case.Sur.rho_hflux
+        @show Case.Sur.rho_qtflux
+        @show Case.Sur.ustar
+        @show Case.Sur.obukhov_length
+        @show Turb.wstar
+        @show TS.i_iter
+        open_files(Stats)
+        write_simulation_time(Stats, TS.t)
+        io(GMV, Stats)
+        io(Case, Stats)
+        io(Turb, Stats, TS)
+        close_files(Stats)
+        error("Done")
+    end
+end
+
 # For dispatching to inherited class
 struct BaseCase end
 

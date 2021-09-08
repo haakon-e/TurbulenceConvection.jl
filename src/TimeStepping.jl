@@ -4,6 +4,7 @@ mutable struct TimeStepping
     t_max::Float64
     t::Float64
     nstep::Int
+    i_iter::Int
 end
 
 function TimeStepping(namelist)
@@ -14,8 +15,9 @@ function TimeStepping(namelist)
     # set time
     t = 0.0
     nstep = 0
+    i_iter = 0
 
-    return TimeStepping(dt, dti, t_max, t, nstep)
+    return TimeStepping(dt, dti, t_max, t, nstep, i_iter)
 end
 
 function update(self)

@@ -23,6 +23,16 @@ function initialize_io(self::GridMeanVariables, Stats::NetCDFIO_Stats)
     add_profile(Stats, "QTvar_mean")
     add_profile(Stats, "HQTcov_mean")
 
+    add_profile(Stats, "U_tendencies")
+    add_profile(Stats, "V_tendencies")
+    add_profile(Stats, "H_tendencies")
+    add_profile(Stats, "QT_tendencies")
+
+    add_profile(Stats, "U_new")
+    add_profile(Stats, "V_new")
+    add_profile(Stats, "H_new")
+    add_profile(Stats, "QT_new")
+
     add_profile(Stats, "W_third_m")
     add_profile(Stats, "H_third_m")
     add_profile(Stats, "QT_third_m")
@@ -53,6 +63,16 @@ function io(self::GridMeanVariables, Stats::NetCDFIO_Stats)
     write_profile(Stats, "Hvar_mean", self.Hvar.values[cinterior])
     write_profile(Stats, "QTvar_mean", self.QTvar.values[cinterior])
     write_profile(Stats, "HQTcov_mean", self.HQTcov.values[cinterior])
+
+    write_profile(Stats, "U_tendencies", self.U.tendencies[cinterior])
+    write_profile(Stats, "V_tendencies", self.V.tendencies[cinterior])
+    write_profile(Stats, "H_tendencies", self.H.tendencies[cinterior])
+    write_profile(Stats, "QT_tendencies", self.QT.tendencies[cinterior])
+
+    write_profile(Stats, "U_new", self.U.new[cinterior])
+    write_profile(Stats, "V_new", self.V.new[cinterior])
+    write_profile(Stats, "H_new", self.H.new[cinterior])
+    write_profile(Stats, "QT_new", self.QT.new[cinterior])
 
     write_profile(Stats, "H_third_m", self.H_third_m.values[cinterior])
     write_profile(Stats, "QT_third_m", self.QT_third_m.values[cinterior])

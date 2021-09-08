@@ -25,7 +25,8 @@ struct Grid{A1, FT}
         nzg = nz + 2 * gw
 
         cinterior = (gw + 1):(nzg - gw)
-        finterior = (gw + 1):(nzg - gw)
+        # Local change to include surface face
+        finterior = (gw):(nzg - gw - 1)
 
         # TODO: make cell centers and cell faces different sizes
         z_half = zeros(nz + 2 * gw)

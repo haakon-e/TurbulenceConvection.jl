@@ -1,4 +1,4 @@
-function initialize(tptke, self::UpdraftVariables, GMV::GridMeanVariables)
+function initialize(tptke, self::UpdraftVariables, GMV::GridMeanVariables, Case, TS, Stats)
     kc_surf = kc_surface(self.Gr)
 
     self.W.values .= 0
@@ -319,6 +319,7 @@ function buoyancy(
     EnvVar::EnvironmentVariables,
     GMV::GridMeanVariables,
     extrap::Bool,
+    tptke, Case, TS, Stats,
 )
 
     grid = self.Gr
