@@ -109,12 +109,22 @@ cent_aux_vars(FT, n_up) = (; aux_vars_ref_state(FT)..., cent_aux_vars_gm(FT)...,
 face_aux_vars_gm(FT) = ()
 face_aux_vars_up(FT) = (; w = FT(0))
 
+face_aux_vars_en_2m(FT) = (;
+    diffusive_flux = FT(0),
+)
+
 face_aux_vars_edmf(FT, n_up) = (;
     turbconv = (;
         bulk = (; w = FT(0)),
         ρ_ae_KM = FT(0),
         ρ_ae_KH = FT(0),
         en = (; w = FT(0)),
+        en_2m = (;
+            tke = face_aux_vars_en_2m(FT),
+            Hvar = face_aux_vars_en_2m(FT),
+            QTvar = face_aux_vars_en_2m(FT),
+            HQTcov = face_aux_vars_en_2m(FT),
+        ),
         up = ntuple(i -> face_aux_vars_up(FT), n_up),
     ),
 )

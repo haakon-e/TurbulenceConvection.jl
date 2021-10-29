@@ -326,6 +326,229 @@ function compute_gm_tendencies!(edmf::EDMF_PrognosticTKE, grid, state, Case, gm,
     end
 end
 
+function compute_en_tendencies!(edmf::EDMF_PrognosticTKE, grid, state, Case, gm, TS)
+    tendencies_gm = center_tendencies_grid_mean(state)
+    tendencies_en = center_tendencies_environment(state)
+    parent(tendencies_en.tke) .= 0
+    parent(tendencies_en.Hvar) .= 0
+    parent(tendencies_en.QTvar) .= 0
+    parent(tendencies_en.HQTcov) .= 0
+    param_set = parameter_set(gm)
+    prog_gm = center_prog_grid_mean(state)
+    prog_en = center_prog_environment(state)
+    aux_en = center_aux_environment(state)
+    aux_en_f = face_aux_environment(state)
+    aux_up_f = face_aux_updrafts(state)
+    aux_up = center_aux_updrafts(state)
+    aux_en_2m_f = face_aux_environment_2m(state)
+    aux_en_2m = center_aux_environment_2m(state)
+    ρ0_f = face_ref_state(state).ρ0
+    p0_c = center_ref_state(state).p0
+    ρ0_c = center_ref_state(state).ρ0
+    α0_c = center_ref_state(state).α0
+    kf_surf = kf_surface(grid)
+    kc_surf = kc_surface(grid)
+    up = edmf.UpdVar
+    en = edmf.EnvVar
+    aux_tc = center_aux_tc(state)
+    ae = 1 .- aux_tc.bulk.area # area of environment
+
+    ρae_tke = ρ0_c.*ae.*prog_en.tke
+    ρae_Hvar = ρ0_c.*ae.*prog_en.Hvar
+    ρae_QTvar = ρ0_c.*ae.*prog_en.QTvar
+    ρae_HQTcov = ρ0_c.*ae.*prog_en.HQTcov
+    @inbounds for k in real_center_indices(grid)
+        is_surface_center(grid, k) && continue
+        # diffusive tendencies
+        ρaeKM_tke_cut = dual_faces(aux_en_2m_f.tke.diffusive_flux, grid, k)
+        tendencies_en.tke[k] += ∇f2c(ρaeKM_tke_cut, grid, k)
+        ρaeKH_Hvar_cut = dual_faces(aux_en_2m_f.Hvar.diffusive_flux, grid, k)
+        tendencies_en.Hvar[k] += ∇f2c(ρaeKH_Hvar_cut, grid, k)
+        ρaeKH_QTvar_cut = dual_faces(aux_en_2m_f.QTvar.diffusive_flux, grid, k)
+        tendencies_en.QTvar[k] += ∇f2c(ρaeKH_QTvar_cut, grid, k)
+        ρaeKM_HQTcov_cut = dual_faces(aux_en_2m_f.HQTcov.diffusive_flux, grid, k)
+        tendencies_en.HQTcov[k] += ∇f2c(ρaeKM_HQTcov_cut, grid, k)
+
+        # advective tendencies
+        w_en_c = daul_f2c_downwind(aux_en_f.w, grid, k)
+        ρae_tke_cut = ccut_downwind(ρae_tke, grid, k)
+        ρaeW_tke_cut = ρae_tke_cut.*w_en_c
+        tendencies_en.tke[k] += c∇_downwind(ρaeW_tke_cut, grid, k; bottom = FreeBoundary(), top = SetValue(0))
+
+        ρae_Hvar_cut = ccut_downwind(ρae_Hvar, grid, k)
+        ρaeW_Hvar_cut = ρae_Hvar_cut.*w_en_c
+        tendencies_en.Hvar[k] += c∇_downwind(ρaeW_Hvar_cut, grid, k; bottom = FreeBoundary(), top = SetValue(0))
+
+        ρae_QTvar_cut = ccut_downwind(ρae_QTvar, grid, k)
+        ρaeW_QTvar_cut = ρae_QTvar_cut.*w_en_c
+        tendencies_en.QTvar[k] += c∇_downwind(ρaeW_QTvar_cut, grid, k; bottom = FreeBoundary(), top = SetValue(0))
+
+        ρae_HQTcov_cut = ccut_downwind(ρae_HQTcov, grid, k)
+        ρaeW_HQTcov_cut = ρae_HQTcov_cut.*w_en_c
+        tendencies_en.HQTcov[k] += c∇_downwind(ρaeW_HQTcov_cut, grid, k; bottom = FreeBoundary(), top = SetValue(0))
+
+        tendencies_en.tke[k] += aux_en_2m.tke.press[k] +
+                                aux_en_2m.tke.buoy[k] +
+                                aux_en_2m.tke.shear[k] +
+                                aux_en_2m.tke.entr_gain[k] +
+                                aux_en_2m.tke.detr_loss[k] +
+                                aux_en_2m.tke.dissipation[k] +
+                                aux_en_2m.tke.rain_src[k]
+
+        tendencies_en.Hvar[k] += aux_en_2m.Hvar.press[k] +
+                                 aux_en_2m.Hvar.buoy[k] +
+                                 aux_en_2m.Hvar.shear[k] +
+                                 aux_en_2m.Hvar.entr_gain[k] +
+                                 aux_en_2m.Hvar.detr_loss[k] +
+                                 aux_en_2m.Hvar.dissipation[k] +
+                                 aux_en_2m.Hvar.rain_src[k]
+
+        tendencies_en.QTvar[k] += aux_en_2m.QTvar.press[k] +
+                                  aux_en_2m.QTvar.buoy[k] +
+                                  aux_en_2m.QTvar.shear[k] +
+                                  aux_en_2m.QTvar.entr_gain[k] +
+                                  aux_en_2m.QTvar.detr_loss[k] +
+                                  aux_en_2m.QTvar.dissipation[k] +
+                                  aux_en_2m.QTvar.rain_src[k]
+
+        tendencies_en.HQTcov[k] += aux_en_2m.HQTcov.press[k] +
+                                   aux_en_2m.HQTcov.buoy[k] +
+                                   aux_en_2m.HQTcov.shear[k] +
+                                   aux_en_2m.HQTcov.entr_gain[k] +
+                                   aux_en_2m.HQTcov.detr_loss[k] +
+                                   aux_en_2m.HQTcov.dissipation[k] +
+                                   aux_en_2m.HQTcov.rain_src[k]
+    end
+
+    # Δzi = grid.Δzi
+    # kc_surf = kc_surface(grid)
+    # kc_toa = kc_top_of_atmos(grid)
+    # w_en_c = center_field(grid)
+    # KM = center_aux_tc(state).KM
+    # KH = center_aux_tc(state).KH
+    # Δzi2 = Δzi*Δzi
+    # ρae_Km = face_field(grid)
+    # ρae_Kh = face_field(grid)
+
+    # aeKm_bcs = (; bottom = SetValue(KM[kc_surf]), top = SetValue(KM[kc_toa]))
+    # aeKh_bcs = (; bottom = SetValue(KH[kc_surf]), top = SetValue(KH[kc_toa]))
+    # @inbounds for k in real_face_indices(grid)
+    #     ρae_Km[k] = interpc2f(KM, grid, k; aeKm_bcs...) * ρ0_f[k]
+    #     ρae_Kh[k] = interpc2f(KH, grid, k; aeKh_bcs...) * ρ0_f[k]
+    # end
+
+    # c_d = CPEDMF.c_d(param_set)
+    # @inbounds for k in real_center_indices(grid)
+    #     D_env = 0.0
+    #     diss_fact = ρ0_c[k] * ae[k] * c_d * sqrt(max(prog_en.tke[k], 0)) / max(edmf.mixing_length[k], 1)
+    #     @inbounds for i in 1:up.n_updrafts
+    #         if aux_up[i].area[k] > edmf.minimum_area
+    #             turb_entr = edmf.frac_turb_entr[i, k]
+    #             w_up_c = interpf2c(aux_up_f[i].w, grid, k)
+    #             D_env += ρ0_c[k] * aux_up[i].area[k] * w_up_c * (edmf.entr_sc[i, k] + turb_entr)
+    #         else
+    #             D_env = 0.0
+    #         end
+    #     end
+
+    #     diss_tend_tke = diss_fact * prog_en.tke[k]
+    #     diss_tend_Hvar = diss_fact * prog_en.Hvar[k]
+    #     diss_tend_QTvar = diss_fact * prog_en.QTvar[k]
+    #     diss_tend_HQTcov = diss_fact * prog_en.HQTcov[k]
+    #     detr_tke = D_env * prog_en.tke[k]
+    #     detr_Hvar = D_env * prog_en.Hvar[k]
+    #     detr_QTvar = D_env * prog_en.QTvar[k]
+    #     detr_HQTcov = D_env * prog_en.HQTcov[k]
+    #     if is_surface_center(grid, k)
+    #         adv_tend = 0
+    #         diff_tend_tke = 0
+    #         diff_tend_Hvar = 0
+    #         diff_tend_QTvar = 0
+    #         diff_tend_HQTcov = 0
+    #         adv_tend_tke = 0
+    #         adv_tend_Hvar = 0
+    #         adv_tend_QTvar = 0
+    #         adv_tend_HQTcov = 0
+
+    #     elseif is_toa_center(grid, k)
+    #         diff_tend_k = (ρae_Km[k + 1] + ρae_Km[k]) # b
+    #         diff_tend_km = - ρae_Km[k] # a
+    #         diff_tend_tke = (diff_tend_km * prog_en.tke[k-1] + diff_tend_k * prog_en.tke[k])* Δzi * Δzi
+
+    #         diff_tend_k = (ρae_Kh[k + 1] + ρae_Kh[k]) # b
+    #         diff_tend_km = - ρae_Kh[k] # a
+    #         diff_tend_Hvar = (diff_tend_km * prog_en.Hvar[k-1] + diff_tend_k * prog_en.Hvar[k])* Δzi * Δzi
+    #         diff_tend_QTvar = (diff_tend_km * prog_en.QTvar[k-1] + diff_tend_k * prog_en.QTvar[k])* Δzi * Δzi
+    #         diff_tend_HQTcov = (diff_tend_km * prog_en.HQTcov[k-1] + diff_tend_k * prog_en.HQTcov[k])* Δzi * Δzi
+
+    #         massflux_e = ρ0_c[k] * ae[k] * w_en_c[k]
+    #         adv_tend_tke = - massflux_e * prog_en.tke[k] * Δzi
+    #         adv_tend_Hvar = - massflux_e * prog_en.Hvar[k] * Δzi
+    #         adv_tend_QTvar = - massflux_e * prog_en.QTvar[k] * Δzi
+    #         adv_tend_HQTcov = - massflux_e * prog_en.HQTcov[k] * Δzi
+    #     else
+    #         diff_tend_kp = -ρae_Km[k + 1]
+    #         diff_tend_k =   ρae_Km[k + 1] + ρae_Km[k]
+    #         diff_tend_km = - ρae_Km[k]
+    #         diff_tend_tke = (- diff_tend_km * prog_en.tke[k-1]
+    #                          + diff_tend_k * prog_en.tke[k]
+    #                          - diff_tend_kp * prog_en.tke[k+1])* Δzi * Δzi
+
+    #         diff_tend_kp = -ρae_Kh[k + 1]
+    #         diff_tend_k =   ρae_Kh[k + 1] + ρae_Kh[k]
+    #         diff_tend_km = - ρae_Kh[k]
+    #         diff_tend_Hvar = (- diff_tend_km * prog_en.Hvar[k-1]
+    #                          + diff_tend_k * prog_en.Hvar[k]
+    #                          - diff_tend_kp * prog_en.Hvar[k+1])* Δzi * Δzi
+    #         diff_tend_QTvar = (- diff_tend_km * prog_en.QTvar[k-1]
+    #                          + diff_tend_k * prog_en.QTvar[k]
+    #                          - diff_tend_kp * prog_en.QTvar[k+1])* Δzi * Δzi
+    #         diff_tend_HQTcov = (- diff_tend_km * prog_en.HQTcov[k-1]
+    #                          + diff_tend_k * prog_en.HQTcov[k]
+    #                          - diff_tend_kp * prog_en.HQTcov[k+1])* Δzi * Δzi
+
+    #         massflux_e = ρ0_c[k] * ae[k] * w_en_c[k]
+    #         massflux_e_p = ρ0_c[k + 1] * ae[k + 1] * w_en_c[k + 1]
+    #         adv_tend_tke = - (massflux_e * prog_en.tke[k] -
+    #                           massflux_e_p * prog_en.tke[k + 1]) * Δzi
+    #         adv_tend_Hvar = - (massflux_e * prog_en.Hvar[k] -
+    #                           massflux_e_p * prog_en.Hvar[k + 1]) * Δzi
+    #         adv_tend_QTvar = - (massflux_e * prog_en.QTvar[k] -
+    #                           massflux_e_p * prog_en.QTvar[k + 1]) * Δzi
+    #         adv_tend_HQTcov = - (massflux_e * prog_en.HQTcov[k] -
+    #                           massflux_e_p * prog_en.HQTcov[k + 1]) * Δzi
+    #     end
+    #     tendencies_en.tke[k] += (diff_tend_tke + adv_tend_tke + diss_tend_tke + detr_tke)
+    #     tendencies_en.Hvar[k] += (diff_tend_Hvar + adv_tend_Hvar + diss_tend_Hvar + detr_Hvar)
+    #     tendencies_en.QTvar[k] += (diff_tend_QTvar + adv_tend_QTvar + diss_tend_QTvar + detr_QTvar)
+    #     tendencies_en.HQTcov[k] += (diff_tend_HQTcov + adv_tend_HQTcov + diss_tend_HQTcov + detr_HQTcov)
+    #     tendencies_en.tke[k] += aux_en_2m.tke.press[k] +
+    #                         aux_en_2m.tke.buoy[k] +
+    #                         aux_en_2m.tke.shear[k] +
+    #                         aux_en_2m.tke.entr_gain[k] +
+    #                         aux_en_2m.tke.rain_src[k]
+
+    #     tendencies_en.Hvar[k] += aux_en_2m.Hvar.press[k] +
+    #                              aux_en_2m.Hvar.buoy[k] +
+    #                              aux_en_2m.Hvar.shear[k] +
+    #                              aux_en_2m.Hvar.entr_gain[k] +
+    #                              aux_en_2m.Hvar.rain_src[k]
+
+    #     tendencies_en.QTvar[k] += aux_en_2m.QTvar.press[k] +
+    #                               aux_en_2m.QTvar.buoy[k] +
+    #                               aux_en_2m.QTvar.shear[k] +
+    #                               aux_en_2m.QTvar.entr_gain[k] +
+    #                               aux_en_2m.QTvar.rain_src[k]
+
+    #     tendencies_en.HQTcov[k] += aux_en_2m.HQTcov.press[k] +
+    #                                aux_en_2m.HQTcov.buoy[k] +
+    #                                aux_en_2m.HQTcov.shear[k] +
+    #                                aux_en_2m.HQTcov.entr_gain[k] +
+    #                                aux_en_2m.HQTcov.rain_src[k]
+    # end
+
+end
+
 function compute_diffusive_fluxes(
     edmf::EDMF_PrognosticTKE,
     grid,
@@ -337,6 +560,8 @@ function compute_diffusive_fluxes(
 )
     ρ0_f = face_ref_state(state).ρ0
     aux_tc = center_aux_tc(state)
+    aux_en_2m_f = face_aux_environment_2m(state)
+    prog_en = center_prog_environment(state)
     aux_tc_f = face_aux_tc(state)
     aux_en = center_aux_environment(state)
     aux_en.area .= 1 .- aux_tc.bulk.area # area of environment
@@ -377,6 +602,23 @@ function compute_diffusive_fluxes(
         v_dual = dual_centers(prog_gm.v, grid, k)
         ∇v_f = ∇c2f(v_dual, grid, k; bottom = SetGradient(aeKHv_bc), top = SetGradient(0))
         edmf.diffusive_flux_v[k] = -aux_tc_f.ρ_ae_KM[k] * ∇v_f
+
+        # environment cov diffusive fluxes
+        tke_dual = dual_centers(prog_en.tke, grid, k)
+        ∇tke_f = ∇c2f(tke_dual, grid, k; bottom = SetValue(prog_en.tke[kc_surf]), top = SetGradient(0))
+        aux_en_2m_f.tke.diffusive_flux[k] = -aux_tc_f.ρ_ae_KM[k] * ∇tke_f
+
+        Hvar_dual = dual_centers(prog_en.Hvar, grid, k)
+        ∇Hvar_f = ∇c2f(Hvar_dual, grid, k; bottom = SetValue(prog_en.Hvar[kc_surf]), top = SetGradient(0))
+        aux_en_2m_f.Hvar.diffusive_flux[k] = -aux_tc_f.ρ_ae_KH[k] * ∇Hvar_f
+
+        QTvar_dual = dual_centers(prog_en.QTvar, grid, k)
+        ∇QTvar_f = ∇c2f(QTvar_dual, grid, k; bottom = SetValue(prog_en.QTvar[kc_surf]), top = SetGradient(0))
+        aux_en_2m_f.QTvar.diffusive_flux[k] = -aux_tc_f.ρ_ae_KH[k] * ∇QTvar_f
+
+        HQTcov_dual = dual_centers(prog_en.HQTcov, grid, k)
+        ∇HQTcov_f = ∇c2f(HQTcov_dual, grid, k; bottom = SetValue(prog_en.HQTcov[kc_surf]), top = SetGradient(0))
+        aux_en_2m_f.HQTcov.diffusive_flux[k] = -aux_tc_f.ρ_ae_KH[k] * ∇HQTcov_f
     end
     return
 end
@@ -418,6 +660,7 @@ function update(edmf::EDMF_PrognosticTKE, grid, state, gm::GridMeanVariables, Ca
 
     # compute tendencies
     compute_gm_tendencies!(edmf, grid, state, Case, gm, TS)
+    compute_en_tendencies!(edmf, grid, state, Case, gm, TS)
     compute_updraft_tendencies(edmf, grid, state, gm)
     # ----------- TODO: move to compute_tendencies
     implicit_eqs = edmf.implicit_eqs
@@ -458,6 +701,12 @@ function update(edmf::EDMF_PrognosticTKE, grid, state, gm::GridMeanVariables, Ca
     parent(prog_en.Hvar) .= implicit_eqs.A_Hvar \ implicit_eqs.b_Hvar
     parent(prog_en.QTvar) .= implicit_eqs.A_QTvar \ implicit_eqs.b_QTvar
     parent(prog_en.HQTcov) .= implicit_eqs.A_HQTcov \ implicit_eqs.b_HQTcov
+
+    # parent(prog_en.tke) .+= parent(tendencies_en.tke) * TS.dt
+    # parent(prog_en.Hvar) .+= parent(tendencies_en.Hvar) * TS.dt
+    # parent(prog_en.QTvar) .+= parent(tendencies_en.QTvar) * TS.dt
+    # parent(prog_en.HQTcov) .+= parent(tendencies_en.HQTcov) * TS.dt
+
     @inbounds for k in real_center_indices(grid)
         prog_gm.u[k] += tendencies_gm.u[k] * TS.dt
         prog_gm.v[k] += tendencies_gm.v[k] * TS.dt
@@ -1037,7 +1286,7 @@ function compute_covariance_detr(edmf::EDMF_PrognosticTKE, grid, state, covar_sy
         aux_covar.detr_loss[k] = 0.0
         @inbounds for i in 1:(up.n_updrafts)
             w_up_c = interpf2c(aux_up_f[i].w, grid, k)
-            aux_covar.detr_loss[k] += aux_up[i].area[k] * abs(w_up_c) * edmf.entr_sc[i, k]
+            aux_covar.detr_loss[k] += aux_up[i].area[k] * w_up_c * (edmf.entr_sc[i, k] + edmf.frac_turb_entr[i, k])
         end
         aux_covar.detr_loss[k] *= ρ0_c[k] * prog_covar[k]
     end
@@ -1058,7 +1307,7 @@ function compute_covariance_dissipation(edmf::EDMF_PrognosticTKE, grid, state, c
 
     @inbounds for k in real_center_indices(grid)
         aux_covar.dissipation[k] =
-            (ρ0_c[k] * ae[k] * prog_covar[k] * max(prog_en.tke[k], 0)^0.5 / max(edmf.mixing_length[k], 1.0e-3) * c_d)
+             c_d * (ρ0_c[k] * ae[k] * prog_covar[k] * sqrt(max(prog_en.tke[k], 0)) / max(edmf.mixing_length[k], 1))
     end
     return
 end

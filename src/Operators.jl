@@ -484,6 +484,22 @@ function daul_f2c_upwind(f, grid, k::Cent)
 end
 
 """
+    daul_f2c_downwind
+
+Used when
+     - traversing cell centers
+     - grabbing _interpolated_ one-sided (downwind) stencil of cell center `k` and cell center `k+1`
+"""
+function daul_f2c_downwind(f, grid, k::Cent)
+    kf = CCO.PlusHalf(k.i)
+    if is_toa_center(grid, k)
+        return SA.SVector((f[kf] + f[kf + 1]) / 2)
+    else
+        return SA.SVector((f[kf + 1] + f[kf]) / 2, (f[kf] + f[kf + 2]) / 2)
+    end
+end
+
+"""
     dual_faces
 
 Used when
