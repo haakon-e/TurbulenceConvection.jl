@@ -3,11 +3,16 @@ const TC = TurbulenceConvection
 
 function initialize_edmf(edmf::TC.EDMF_PrognosticTKE, grid, state, Case, gm::TC.GridMeanVariables, TS::TC.TimeStepping)
     initialize_covariance(edmf, grid, state, gm, Case)
+    up = edmf.UpdVar
+    param_set = TC.parameter_set(gm)
+    TC.update_surface(Case, grid, state, gm, TS, param_set)
+    TC.compute_updraft_surface_bc(edmf, grid, state, Case)
     if Case.casename == "DryBubble"
-        initialize_updrafts_DryBubble(edmf, grid, state, edmf.UpdVar, gm)
+        initialize_updrafts_DryBubble(edmf, grid, state, up, gm)
     else
-        initialize_updrafts(edmf, grid, state, edmf.UpdVar, gm)
+        initialize_updrafts(edmf, grid, state, up, gm)
     end
+    TC.set_edmf_surface_bc(edmf, grid, state, up, Case.Sur)
     return
 end
 
@@ -20,7 +25,7 @@ function initialize_covariance(edmf::TC.EDMF_PrognosticTKE, grid, state, gm, Cas
 
     prog_en.tke .= aux_gm.tke
 
-    TC.reset_surface_covariance(edmf, grid, state, gm, Case)
+    TC.get_GMV_CoVar(edmf, grid, state, :tke, :w)
     aux_gm.Hvar .= aux_gm.Hvar[kc_surf] .* aux_gm.tke
     aux_gm.QTvar .= aux_gm.QTvar[kc_surf] .* aux_gm.tke
     aux_gm.HQTcov .= aux_gm.HQTcov[kc_surf] .* aux_gm.tke
@@ -40,6 +45,7 @@ function initialize_updrafts(edmf, grid, state, up::TC.UpdraftVariables, gm::TC.
     aux_gm = TC.center_aux_grid_mean(state)
     prog_up = TC.center_prog_updrafts(state)
     prog_up_f = TC.face_prog_updrafts(state)
+    ρ0_c = TC.center_ref_state(state).ρ0
     @inbounds for i in 1:(up.n_updrafts)
         @inbounds for k in TC.real_face_indices(grid)
             aux_up_f[i].w[k] = 0
@@ -61,7 +67,8 @@ function initialize_updrafts(edmf, grid, state, up::TC.UpdraftVariables, gm::TC.
             prog_up[i].ρaθ_liq_ice[k] = 0
         end
 
-        aux_up[i].area[kc_surf] = up.updraft_fraction / up.n_updrafts
+        aux_up[i].area[kc_surf] = edmf.area_surface_bc[i]
+        prog_up[i].ρarea[kc_surf] = ρ0_c[kc_surf] * aux_up[i].area[kc_surf]
     end
     return
 end
@@ -155,7 +162,7 @@ function initialize_updrafts_DryBubble(edmf, grid, state, up::TC.UpdraftVariable
 
         @inbounds for k in TC.real_center_indices(grid)
             if minimum(z_in) <= grid.zc[k] <= maximum(z_in)
-                aux_up[i].area[k] = Area_in[k] #up.updraft_fraction/up.n_updrafts
+                aux_up[i].area[k] = Area_in[k]
                 aux_up[i].θ_liq_ice[k] = θ_liq_in[k]
                 aux_up[i].q_tot[k] = 0.0
                 aux_up[i].q_liq[k] = 0.0
@@ -167,7 +174,7 @@ function initialize_updrafts_DryBubble(edmf, grid, state, up::TC.UpdraftVariable
                 prog_up[i].ρaθ_liq_ice[k] = prog_up[i].ρarea[k] * aux_up[i].θ_liq_ice[k]
                 prog_up[i].ρaq_tot[k] = prog_up[i].ρarea[k] * aux_up[i].q_tot[k]
             else
-                aux_up[i].area[k] = 0.0 #up.updraft_fraction/up.n_updrafts
+                aux_up[i].area[k] = 0.0
                 aux_up[i].θ_liq_ice[k] = prog_gm.θ_liq_ice[k]
                 aux_up[i].T[k] = aux_gm.T[k]
                 prog_up[i].ρarea[k] = 0.0

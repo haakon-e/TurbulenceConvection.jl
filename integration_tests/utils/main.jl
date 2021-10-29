@@ -2,11 +2,16 @@ import Logging
 import TerminalLoggers
 Logging.global_logger(TerminalLoggers.TerminalLogger())
 
+import UnPack
 import JSON
 import ArgParse
 import TurbulenceConvection
+
 import ClimaCore
 const CC = ClimaCore
+
+import OrdinaryDiffEq
+const ODE = OrdinaryDiffEq
 
 include("initial_conditions.jl")
 include("parameter_set.jl")
@@ -49,6 +54,7 @@ cent_aux_vars_gm(FT) = (;
     q_liq = FT(0),
     q_ice = FT(0),
     RH = FT(0),
+    s = FT(0),
     T = FT(0),
     buoy = FT(0),
     cloud_fraction = FT(0),
@@ -67,7 +73,15 @@ cent_aux_vars_en_2m(FT) = (;
     rain_src = FT(0),
 )
 cent_aux_vars_up(FT) = (;
-    q_liq = FT(0), q_ice = FT(0), T = FT(0), RH = FT(0), buoy = FT(0), area = FT(0), q_tot = FT(0), θ_liq_ice = FT(0),
+    q_liq = FT(0),
+    q_ice = FT(0),
+    T = FT(0),
+    RH = FT(0),
+    s = FT(0),
+    buoy = FT(0),
+    area = FT(0),
+    q_tot = FT(0),
+    θ_liq_ice = FT(0),
 )
 cent_aux_vars_edmf(FT, n_up) = (;
     turbconv = (;
@@ -89,6 +103,7 @@ cent_aux_vars_edmf(FT, n_up) = (;
             q_ice = FT(0),
             θ_liq_ice = FT(0),
             RH = FT(0),
+            s = FT(0),
             T = FT(0),
             buoy = FT(0),
             cloud_fraction = FT(0),
@@ -106,7 +121,7 @@ cent_aux_vars_edmf(FT, n_up) = (;
 cent_aux_vars(FT, n_up) = (; aux_vars_ref_state(FT)..., cent_aux_vars_gm(FT)..., cent_aux_vars_edmf(FT, n_up)...)
 
 # Face only
-face_aux_vars_gm(FT) = ()
+face_aux_vars_gm(FT) = (; massflux_s = FT(0), diffusive_flux_s = FT(0), total_flux_s = FT(0))
 face_aux_vars_up(FT) = (; w = FT(0))
 
 face_aux_vars_en_2m(FT) = (;
@@ -155,7 +170,7 @@ cent_prognostic_vars_up(FT) = (; ρarea = FT(0), ρaθ_liq_ice = FT(0), ρaq_tot
 cent_prognostic_vars_en(FT) = (; tke = FT(0), Hvar = FT(0), QTvar = FT(0), HQTcov = FT(0))
 cent_prognostic_vars_edmf(FT, n_up) = (;
     turbconv = (;
-        en = cent_prognostic_vars_en(FT), up = ntuple(i -> cent_prognostic_vars_up(FT), n_up), ra = (; qr = FT(0)),
+        en = cent_prognostic_vars_en(FT), up = ntuple(i -> cent_prognostic_vars_up(FT), n_up), pr = (; qr = FT(0)),
     ),
 )
 # cent_prognostic_vars_edmf(FT, n_up) = (;) # could also use this for empty model
