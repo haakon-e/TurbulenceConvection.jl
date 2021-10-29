@@ -539,33 +539,6 @@ function update(edmf::EDMF_PrognosticTKE, grid, state, gm::GridMeanVariables, Ca
     compute_gm_tendencies!(edmf, grid, state, Case, gm, TS)
     compute_en_tendencies!(edmf, grid, state, Case, gm, TS)
     compute_updraft_tendencies(edmf, grid, state, gm)
-    # ----------- TODO: move to compute_tendencies
-    implicit_eqs = edmf.implicit_eqs
-    # Matrix is the same for all variables that use the same eddy diffusivity, we can construct once and reuse
-
-    common_args = (
-        grid,
-        param_set,
-        state,
-        TS,
-        up.n_updrafts,
-        edmf.minimum_area,
-        edmf.pressure_plume_spacing,
-        edmf.frac_turb_entr,
-        edmf.entr_sc,
-        edmf.mixing_length,
-    )
-
-    implicit_eqs.A_TKE .= construct_tridiag_diffusion_en(common_args..., true)
-    implicit_eqs.A_Hvar .= construct_tridiag_diffusion_en(common_args..., false)
-    implicit_eqs.A_QTvar .= construct_tridiag_diffusion_en(common_args..., false)
-    implicit_eqs.A_HQTcov .= construct_tridiag_diffusion_en(common_args..., false)
-
-    implicit_eqs.b_TKE .= en_diffusion_tendencies(grid, state, TS, :tke, n_updrafts)
-    implicit_eqs.b_Hvar .= en_diffusion_tendencies(grid, state, TS, :Hvar, n_updrafts)
-    implicit_eqs.b_QTvar .= en_diffusion_tendencies(grid, state, TS, :QTvar, n_updrafts)
-    implicit_eqs.b_HQTcov .= en_diffusion_tendencies(grid, state, TS, :HQTcov, n_updrafts)
-    # -----------
 
     ###
     ### update
@@ -574,10 +547,6 @@ function update(edmf::EDMF_PrognosticTKE, grid, state, gm::GridMeanVariables, Ca
     if edmf.Precip.precipitation_model == "clima_1m"
         update_precipitation(edmf.Precip, grid, state, up_thermo, en_thermo, edmf.PrecipPhys, TS)
     end
-    # parent(prog_en.tke) .= implicit_eqs.A_TKE \ implicit_eqs.b_TKE
-    # parent(prog_en.Hvar) .= implicit_eqs.A_Hvar \ implicit_eqs.b_Hvar
-    # parent(prog_en.QTvar) .= implicit_eqs.A_QTvar \ implicit_eqs.b_QTvar
-    # parent(prog_en.HQTcov) .= implicit_eqs.A_HQTcov \ implicit_eqs.b_HQTcov
 
     parent(prog_en.tke) .+= parent(tendencies_en.tke) * TS.dt
     parent(prog_en.Hvar) .+= parent(tendencies_en.Hvar) * TS.dt
@@ -1136,43 +1105,6 @@ function compute_covariance_dissipation(edmf::EDMF_PrognosticTKE, grid, state, c
              c_d * (ρ0_c[k] * ae[k] * prog_covar[k] * sqrt(max(prog_en.tke[k], 0)) / max(edmf.mixing_length[k], 1))
     end
     return
-end
-
-function en_diffusion_tendencies(grid::Grid, state, TS, covar_sym::Symbol, n_updrafts)
-    dti = TS.dti
-    b = center_field(grid)
-    ρ0_c = center_ref_state(state).ρ0
-    prog_en = center_prog_environment(state)
-    aux_en_2m = center_aux_environment_2m(state)
-    prog_covar = getproperty(prog_en, covar_sym)
-    aux_covar = getproperty(aux_en_2m, covar_sym)
-    aux_up = center_aux_updrafts(state)
-
-    ae = center_field(grid)
-
-    @inbounds for k in real_center_indices(grid)
-        ae[k] = 1 .- sum(ntuple(i -> aux_up[i].area[k], n_updrafts))
-    end
-
-    kc_surf = kc_surface(grid)
-    covar_surf = prog_covar[kc_surf]
-
-    @inbounds for k in real_center_indices(grid)
-        if is_surface_center(grid, k)
-            b[k] = covar_surf
-        else
-            b[k] = (
-                ρ0_c[k] * ae[k] * prog_covar[k] * dti +
-                aux_covar.press[k] +
-                aux_covar.buoy[k] +
-                aux_covar.shear[k] +
-                aux_covar.entr_gain[k] +
-                aux_covar.rain_src[k]
-            )
-        end
-    end
-
-    return b
 end
 
 function GMV_third_m(edmf::EDMF_PrognosticTKE, grid, state, covar_en_sym::Symbol, var::Symbol, gm_third_m_sym::Symbol)
