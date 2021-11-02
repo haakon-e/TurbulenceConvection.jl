@@ -24,7 +24,7 @@ function compute_ref_state!(
     state,
     grid::Grid,
     param_set::PS,
-    Stats::NetCDFIO_Stats;
+    Stats;
     Pg::FT,
     Tg::FT,
     qtg::FT,
