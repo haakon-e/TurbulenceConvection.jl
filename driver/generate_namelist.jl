@@ -276,17 +276,16 @@ function Rico(namelist_defaults)
 
     namelist["meta"]["casename"] = "Rico"
 
-    namelist["grid"]["nz"] = 80
-    namelist["grid"]["dz"] = 50.0
+    namelist["grid"]["nz"] = 80 #80
+    namelist["grid"]["dz"] = 50.0 #50.0
 
-    # Rico cannot run with adaptive dt for now
-    namelist["time_stepping"]["adapt_dt"] = true
+    namelist["time_stepping"]["adapt_dt"] = false
     namelist["time_stepping"]["t_max"] = 86400.0
-    namelist["time_stepping"]["dt_max"] = 9.0
+    #namelist["time_stepping"]["dt_max"] = 5.0
     namelist["time_stepping"]["dt_min"] = 1.5
 
-    namelist["microphysics"]["precipitation_model"] = "clima_1m"
-    namelist["microphysics"]["τ_acnv"] = 2500.0
+    namelist["microphysics"]["precipitation_model"] = "clima_1m" #"cutoff"
+    namelist["microphysics"]["τ_precip"] = 2500 #500.0 #2500.0
 
     namelist["meta"]["simname"] = "Rico"
     namelist["meta"]["casename"] = "Rico"
@@ -298,14 +297,16 @@ function TRMM_LBA(namelist_defaults)
 
     namelist["meta"]["casename"] = "TRMM_LBA"
 
-    namelist["grid"]["nz"] = 320
-    namelist["grid"]["dz"] = 50.0
+    namelist["grid"]["nz"] = 80 #320
+    namelist["grid"]["dz"] = 200 #50.0
 
+    namelist["time_stepping"]["adapt_dt"] = false
     namelist["time_stepping"]["t_max"] = 60 * 60 * 6.0
+    #namelist["time_stepping"]["dt_max"] = 5.0
     namelist["time_stepping"]["dt_min"] = 1.0
 
-    namelist["microphysics"]["precipitation_model"] = "cutoff"
-    namelist["microphysics"]["τ_precip"] = 50.0
+    namelist["microphysics"]["precipitation_model"] = "clima_1m" #"cutoff"
+    namelist["microphysics"]["τ_precip"] = 2500 #2500.0
 
     namelist["meta"]["simname"] = "TRMM_LBA"
     namelist["meta"]["casename"] = "TRMM_LBA"
@@ -333,11 +334,18 @@ function GATE_III(namelist_defaults)
     namelist = deepcopy(namelist_defaults)
     namelist["meta"]["casename"] = "GATE_III"
 
-    namelist["grid"]["nz"] = 1700
-    namelist["grid"]["dz"] = 10
+    #namelist["grid"]["nz"] = 1700
+    #namelist["grid"]["dz"] = 10
+    namelist["grid"]["nz"] = 200
+    namelist["grid"]["dz"] = 85
 
+    namelist["time_stepping"]["adapt_dt"] = false
     namelist["time_stepping"]["t_max"] = 3600.0 * 24.0
+    namelist["time_stepping"]["dt_max"] = 5.0
     namelist["time_stepping"]["dt_min"] = 2.0
+
+    namelist["microphysics"]["precipitation_model"] = "clima_1m" #"cutoff"
+    namelist["microphysics"]["τ_precip"] = 100.0
 
     namelist["meta"]["simname"] = "GATE_III"
     namelist["meta"]["casename"] = "GATE_III"
