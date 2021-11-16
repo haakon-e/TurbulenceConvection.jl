@@ -119,7 +119,7 @@ get_surface_type(::AbstractCaseType) = TC.SurfaceFixedFlux # default
 get_surface_type(::Rico) = TC.SurfaceFixedCoeffs
 get_surface_type(::GATE_III) = TC.SurfaceFixedCoeffs
 get_surface_type(::GABLS) = TC.SurfaceMoninObukhovDry
-get_surface_type(::SP) = TC.SurfaceSullivanPatton
+get_surface_type(::SP) = TC.SurfaceMoninObukhovDry
 get_surface_type(::DryBubble) = TC.SurfaceNone
 
 get_forcing_type(::AbstractCaseType) = TC.ForcingStandard # default
@@ -1456,6 +1456,7 @@ end
 function initialize_surface(self::CasesBase{SP}, grid::Grid, state, param_set)
     kf_surf = TC.kf_surface(grid)
     p0_f_surf = TC.face_ref_state(state).p0[kf_surf]
+    ρ0_f_surf = TC.face_ref_state(state).ρ0[kf_surf]
     g = CPP.grav(param_set)
     self.Sur.zrough = 0.1
     self.Sur.Tsurface = 300.0
@@ -1463,6 +1464,8 @@ function initialize_surface(self::CasesBase{SP}, grid::Grid, state, param_set)
     ts = TD.PhaseEquil_pTq(param_set, p0_f_surf, self.Sur.Tsurface, self.Sur.qsurface)
     theta_surface = TD.liquid_ice_pottemp(ts)
     θ_flux = 0.24
+    self.Sur.shf = θ_flux * TD.cp_m(ts) * ρ0_f_surf
+    @show self.Sur.shf
     self.Sur.ustar = 0.28 # just to initilize grid mean covariances
     self.Sur.bflux = g * θ_flux / theta_surface
 end
@@ -1580,6 +1583,12 @@ end
 function initialize_surface(self::CasesBase{DryBubble}, grid::Grid, state, param_set)
     self.Sur.qsurface = 0.0
     self.Sur.shf = 0.0
+    self.Sur.Tsurface = 299.9834
+    self.Sur.windspeed = 0.0001
+    self.Sur.zrough = 1e-4
+    self.Sur.bflux = 1e-4
+    self.Sur.ustar = 0.000540989171658113
+    self.Sur.ustar_fixed = true
 end
 
 

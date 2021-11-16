@@ -28,7 +28,7 @@ const SA = StaticArrays
 
 const TD = Thermodynamics
 const SF = SurfaceFluxes
-const UF = SF.UniversalFunctions
+const UF = SurfaceFluxes.UniversalFunctions
 const RS = RootSolvers
 
 const CM = CloudMicrophysics
