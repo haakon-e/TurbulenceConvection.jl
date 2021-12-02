@@ -14,6 +14,9 @@ import SciMLBase
 import OrdinaryDiffEq
 const ODE = OrdinaryDiffEq
 
+import DiffEqOperators
+const DEO = DiffEqOperators
+
 const tc_dir = dirname(dirname(pathof(TurbulenceConvection)))
 
 include("initial_conditions.jl")
@@ -478,7 +481,11 @@ function run(sim::Simulation1d)
     callback_adapt_dt = ODE.DiscreteCallback(condition_every_iter, adaptive_dt!; save_positions = (false, false))
     callback_adapt_dt = sim.adapt_dt ? (callback_adapt_dt,) : ()
 
-    prob = ODE.ODEProblem(TC.step!, state.prog, t_span, params; dt = sim.TS.dt)
+    ode_func = ODE.ODEFunction(TC.step!;
+        # jac_prototype = DEO.JacVecOperator(TC.step!, state.prog)
+        jac_prototype = DEO.JacVecOperator(TC.step!, state.prog, params; autodiff = false)
+    )
+    prob = ODE.ODEProblem(ode_func, state.prog, t_span, params; dt = sim.TS.dt)
 
     # TODO: LES_driven_SCM is currently unstable w.r.t. higher order moments (HOM).
     # So, we tell OrdinaryDiffEq.jl to not perform NaNs check on the solution
@@ -488,7 +495,21 @@ function run(sim::Simulation1d)
 
     sol = ODE.solve(
         prob,
-        ODE.Euler();
+        ODE.ImplicitEuler(;linsolve = ODE.LinSolveGMRES(
+            abstol = 1e-3,
+            reltol = 1e-2,
+        ));
+        # ODE.Rosenbrock23(;
+        # ODE.Rodas5(;
+        #     autodiff=false,
+        #     linsolve = ODE.LinSolveGMRES(;
+        #         abstol = 1e-7,
+        #         reltol = 1e-4,
+        #     )
+        # );
+        abstol = 1e-3,
+        reltol = 1e-2,
+        # ODE.TRBDF2(;linsolve = ODE.LinSolveGMRES());
         progress_steps = 100,
         save_start = false,
         saveat = last(t_span),
