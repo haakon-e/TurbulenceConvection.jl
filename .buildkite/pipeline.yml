@@ -159,7 +159,7 @@ steps:
   - label: ":rocket: Allocations analysis"
     key: "cpu_allocations"
     command:
-      - "julia --color=yes --project=test --track-allocation=user perf/allocs.jl"
+      - "julia --color=yes --project=test perf/allocs.jl"
     artifact_paths:
       - "perf/allocations_output/*"
     agents:
