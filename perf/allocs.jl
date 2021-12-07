@@ -28,7 +28,7 @@ filter!(x -> x ≠ "SP", all_cases) # not currently running SP
 allocs = Dict()
 for case in all_cases
     ENV["ALLOCATION_CASE_NAME"] = case
-    run(`julia --project=test/ --track-allocation=user perf/alloc_per_case.jl`)
+    run(`julia --project=test/ --track-allocation=all perf/alloc_per_case.jl`)
     allocs[case] = Coverage.analyze_malloc(".")
 
     # Clean up files
