@@ -260,50 +260,50 @@ end
 
 # Perform the update of the scheme
 function ∑tendencies!(tendencies, prog, params, t)
-    UnPack.@unpack edmf, grid, gm, case, aux, TS = params
+    # UnPack.@unpack edmf, grid, gm, case, aux, TS = params
 
-    TS.t = t
-    state = State(prog, aux, tendencies)
+    # TS.t = t
+    # state = State(prog, aux, tendencies)
 
-    affect_filter!(edmf, grid, state, gm, case, TS)
+    # affect_filter!(edmf, grid, state, gm, case, TS)
 
-    gm = gm
-    up = edmf.UpdVar
-    en = edmf.EnvVar
-    param_set = parameter_set(gm)
-    en_thermo = edmf.EnvThermo
+    # gm = gm
+    # up = edmf.UpdVar
+    # en = edmf.EnvVar
+    # param_set = parameter_set(gm)
+    # en_thermo = edmf.EnvThermo
 
-    # Update aux / pre-tendencies filters. TODO: combine these into a function that minimizes traversals
-    # Some of these methods should probably live in `compute_tendencies`, when written, but we'll
-    # treat them as auxiliary variables for now, until we disentangle the tendency computations.
+    # # Update aux / pre-tendencies filters. TODO: combine these into a function that minimizes traversals
+    # # Some of these methods should probably live in `compute_tendencies`, when written, but we'll
+    # # treat them as auxiliary variables for now, until we disentangle the tendency computations.
 
-    compute_updraft_surface_bc(edmf, grid, state, case)
-    update_aux!(edmf, gm, grid, state, case, param_set, TS)
+    # compute_updraft_surface_bc(edmf, grid, state, case)
+    # update_aux!(edmf, gm, grid, state, case, param_set, TS)
 
-    tends_face = tendencies.face
-    tends_cent = tendencies.cent
-    parent(tends_face) .= 0
-    parent(tends_cent) .= 0
+    # tends_face = tendencies.face
+    # tends_cent = tendencies.cent
+    # parent(tends_face) .= 0
+    # parent(tends_cent) .= 0
 
-    # causes division error in dry bubble first time step
-    compute_precipitation_formation_tendencies(grid, state, up, edmf.Precip, TS.dt, param_set)
+    # # causes division error in dry bubble first time step
+    # compute_precipitation_formation_tendencies(grid, state, up, edmf.Precip, TS.dt, param_set)
 
-    microphysics(en_thermo, grid, state, en, edmf.Precip, TS.dt, param_set) # saturation adjustment + rain creation
-    if edmf.Precip.precipitation_model == "clima_1m"
-        compute_precipitation_sink_tendencies(grid, state, gm, TS)
-        compute_precipitation_advection_tendencies(edmf, grid, state, gm)
-    end
+    # microphysics(en_thermo, grid, state, en, edmf.Precip, TS.dt, param_set) # saturation adjustment + rain creation
+    # if edmf.Precip.precipitation_model == "clima_1m"
+    #     compute_precipitation_sink_tendencies(grid, state, gm, TS)
+    #     compute_precipitation_advection_tendencies(edmf, grid, state, gm)
+    # end
 
-    # compute tendencies
-    compute_gm_tendencies!(edmf, grid, state, case, gm, TS)
-    compute_updraft_tendencies(edmf, grid, state, gm)
+    # # compute tendencies
+    # compute_gm_tendencies!(edmf, grid, state, case, gm, TS)
+    # compute_updraft_tendencies(edmf, grid, state, gm)
 
-    compute_en_tendencies!(edmf, grid, state, param_set, TS, Val(:tke), Val(:ρatke))
-    compute_en_tendencies!(edmf, grid, state, param_set, TS, Val(:Hvar), Val(:ρaHvar))
-    compute_en_tendencies!(edmf, grid, state, param_set, TS, Val(:QTvar), Val(:ρaQTvar))
-    compute_en_tendencies!(edmf, grid, state, param_set, TS, Val(:HQTcov), Val(:ρaHQTcov))
+    # compute_en_tendencies!(edmf, grid, state, param_set, TS, Val(:tke), Val(:ρatke))
+    # compute_en_tendencies!(edmf, grid, state, param_set, TS, Val(:Hvar), Val(:ρaHvar))
+    # compute_en_tendencies!(edmf, grid, state, param_set, TS, Val(:QTvar), Val(:ρaQTvar))
+    # compute_en_tendencies!(edmf, grid, state, param_set, TS, Val(:HQTcov), Val(:ρaHQTcov))
 
-    return
+    # return
 end
 
 function set_edmf_surface_bc(edmf::EDMF_PrognosticTKE, grid, state, up, surface)
