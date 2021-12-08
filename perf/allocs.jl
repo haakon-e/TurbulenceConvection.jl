@@ -4,6 +4,45 @@ end
 import Coverage
 import Plots
 
+# Packages to monitor
+import OrdinaryDiffEq
+import LinearAlgebra
+import RootSolvers
+import Thermodynamics
+import SciMLBase
+import StaticArrays
+import Distributions
+import Dierckx
+import CloudMicrophysics
+import CLIMAParameters
+import DifferentialEquations
+import ClimaCore
+import FastGaussQuadrature
+import Flux
+import NCDatasets
+import SurfaceFluxes
+mod_dir(x) = dirname(dirname(pathof(x)))
+all_dirs_to_monitor = [
+    ".",
+    "/central/software/julia/1.7.0/share/julia/base/",
+    mod_dir(OrdinaryDiffEq),
+    mod_dir(LinearAlgebra),
+    mod_dir(RootSolvers),
+    mod_dir(Thermodynamics),
+    mod_dir(SciMLBase),
+    mod_dir(StaticArrays),
+    mod_dir(Distributions),
+    mod_dir(Dierckx),
+    mod_dir(CloudMicrophysics),
+    mod_dir(CLIMAParameters),
+    mod_dir(DifferentialEquations),
+    mod_dir(ClimaCore),
+    mod_dir(FastGaussQuadrature),
+    mod_dir(Flux),
+    mod_dir(NCDatasets),
+    mod_dir(SurfaceFluxes),
+]
+
 # https://github.com/jheinen/GR.jl/issues/278#issuecomment-587090846
 ENV["GKSwstype"] = "nul"
 
@@ -29,13 +68,16 @@ allocs = Dict()
 for case in all_cases
     ENV["ALLOCATION_CASE_NAME"] = case
     run(`julia --project=test/ --track-allocation=all perf/alloc_per_case.jl`)
-    allocs[case] = Coverage.analyze_malloc(".")
+
+    allocs[case] = Coverage.analyze_malloc(all_dirs_to_monitor)
 
     # Clean up files
-    all_files = [joinpath(root, f) for (root, dirs, files) in Base.Filesystem.walkdir(".") for f in files]
-    all_mem_files = filter(x -> endswith(x, ".mem"), all_files)
-    for f in all_mem_files
-        rm(f)
+    for d in all_dirs_to_monitor
+        all_files = [joinpath(root, f) for (root, dirs, files) in Base.Filesystem.walkdir(d) for f in files]
+        all_mem_files = filter(x -> endswith(x, ".mem"), all_files)
+        for f in all_mem_files
+            rm(f)
+        end
     end
 end
 
@@ -45,7 +87,14 @@ function plot_allocs(case_name, allocs_per_case, n_unique_bytes)
     p = Plots.plot()
     @info "Allocations for $case_name"
 
-    filename_only(fn) = first(split(fn, ".jl")) * ".jl"
+    function filename_only(fn)
+        fn = first(split(fn, ".jl")) * ".jl"
+        splitby = "central/scratch/climaci/turbulenceconvection-ci/depot/cpu/packages/"
+        if occursin(splitby, fn)
+            fn = last(split(fn, splitby))
+        end
+        return fn
+    end
     function compile_tc(fn, linenumber)
         c1 = endswith(filename_only(fn), "TurbulenceConvection.jl")
         c2 = linenumber == 1
@@ -97,10 +146,11 @@ function plot_allocs(case_name, allocs_per_case, n_unique_bytes)
         markershape = (markershape[end], markershape[1:(end - 1)]...)
     end
     p1 = Plots.plot!(ylabel = "Allocations (KB)", title = case_name)
+    subset_allocs_per_case = allocs_per_case[end:-1:(end - 100)]
     p2 = Plots.plot(
-        1:length(allocs_per_case),
-        getproperty.(allocs_per_case, :bytes)[end:-1:1] ./ 1000;
-        xlabel = "i-th allocating line (sorted)",
+        1:length(subset_allocs_per_case),
+        getproperty.(subset_allocs_per_case, :bytes) ./ 1000;
+        xlabel = "i-th allocating line (truncated and sorted)",
         ylabel = "Allocations (KB)",
         markershape = :circle,
     )
