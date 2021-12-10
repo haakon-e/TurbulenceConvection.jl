@@ -276,16 +276,15 @@ function Rico(namelist_defaults)
 
     namelist["meta"]["casename"] = "Rico"
 
-    namelist["grid"]["nz"] = 80 #80
-    namelist["grid"]["dz"] = 50.0 #50.0
+    namelist["grid"]["nz"] = 80
+    namelist["grid"]["dz"] = 50.0
 
     namelist["time_stepping"]["adapt_dt"] = false
     namelist["time_stepping"]["t_max"] = 86400.0
     #namelist["time_stepping"]["dt_max"] = 5.0
     namelist["time_stepping"]["dt_min"] = 1.5
 
-    namelist["microphysics"]["precipitation_model"] = "clima_1m" #"cutoff"
-    namelist["microphysics"]["τ_precip"] = 2500 #500.0 #2500.0
+    namelist["microphysics"]["precipitation_model"] = "clima_1m"
 
     namelist["meta"]["simname"] = "Rico"
     namelist["meta"]["casename"] = "Rico"
@@ -297,8 +296,8 @@ function TRMM_LBA(namelist_defaults)
 
     namelist["meta"]["casename"] = "TRMM_LBA"
 
-    namelist["grid"]["nz"] = 80 #320
-    namelist["grid"]["dz"] = 200 #50.0
+    namelist["grid"]["nz"] = 80
+    namelist["grid"]["dz"] = 200
 
     namelist["time_stepping"]["adapt_dt"] = false
     namelist["time_stepping"]["t_max"] = 60 * 60 * 6.0
@@ -306,7 +305,6 @@ function TRMM_LBA(namelist_defaults)
     namelist["time_stepping"]["dt_min"] = 1.0
 
     namelist["microphysics"]["precipitation_model"] = "clima_1m" #"cutoff"
-    namelist["microphysics"]["τ_precip"] = 2500 #2500.0
 
     namelist["meta"]["simname"] = "TRMM_LBA"
     namelist["meta"]["casename"] = "TRMM_LBA"

@@ -39,8 +39,7 @@ function precipitation_formation(param_set::APS, precipitation_model, qr::FT, qs
             qsat = TD.q_vap_saturation(ts)
             λ = TD.liquid_fraction(ts)
 
-            #S_qt = -min((q.liq + q.ice) / dt, -CM0.remove_precipitation(param_set, q, qsat))
-            S_qt = -min((q.liq + q.ice) / dt, -CM0.remove_precipitation(param_set, q))
+            S_qt = -min((q.liq + q.ice) / dt, -CM0.remove_precipitation(param_set, q, qsat))
 
             qr_tendency -= S_qt * λ
             qs_tendency -= S_qt * (1.0 - λ)
@@ -59,13 +58,12 @@ function precipitation_formation(param_set::APS, precipitation_model, qr::FT, qs
             qsat = TD.q_vap_saturation(ts)
             λ = TD.liquid_fraction(ts)
 
-            # autoconversion of cloud water and ice handled using the 0-moment scheme rates
-            # saturation adjustment prevents using the 1-moment snow autoconversion rate
-            # because it assumes supersaturation is present
-            #S_qt = -min((q.liq + q.ice) / dt, -CM0.remove_precipitation(param_set, q, qsat))
-            S_qt_rain = -min(q.liq / dt, -remove_precipitation_rain(param_set, q))
-            S_qt_snow = -min(q.ice / dt, -remove_precipitation_snow(param_set, q))
-
+            # Autoconversion of cloud ice to snow is done with a simplified rate.
+            # The saturation adjustment scheme prevents using the
+            # 1-moment snow autoconversion rate that assumes
+            # that the supersaturation is present in the domain.
+            S_qt_rain = -min(q.liq / dt, CM1.conv_q_liq_to_q_rai(param_set, q.liq))
+            S_qt_snow = -min(q.ice / dt, CM1.conv_q_ice_to_q_sno_no_supersat(param_set, q.ice))
             qr_tendency -= S_qt_rain
             qs_tendency -= S_qt_snow
             qt_tendency += S_qt_rain + S_qt_snow
