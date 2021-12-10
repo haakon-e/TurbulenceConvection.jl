@@ -1,17 +1,11 @@
-function remove_precipitation_rain(
-    param_set::APS,
-    q::TD.PhasePartition{FT},
-) where {FT <: Real}
+function remove_precipitation_rain(param_set::APS, q::TD.PhasePartition{FT}) where {FT <: Real}
 
     τ_precip_rain::FT = 2500.0
     qc_0_rain::FT = 0.5e-3 #1.5 2.8 #3.0 #3.2 #3.5
 
     return -max(0, (q.liq - qc_0_rain)) / τ_precip_rain
 end
-function remove_precipitation_snow(
-    param_set::APS,
-    q::TD.PhasePartition{FT},
-) where {FT <: Real}
+function remove_precipitation_snow(param_set::APS, q::TD.PhasePartition{FT}) where {FT <: Real}
 
     τ_precip_snow::FT = 100.0
     qc_0_snow::FT = 1e-6
