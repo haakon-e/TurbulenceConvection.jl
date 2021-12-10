@@ -332,10 +332,8 @@ function GATE_III(namelist_defaults)
     namelist = deepcopy(namelist_defaults)
     namelist["meta"]["casename"] = "GATE_III"
 
-    #namelist["grid"]["nz"] = 1700
-    #namelist["grid"]["dz"] = 10
-    namelist["grid"]["nz"] = 200
-    namelist["grid"]["dz"] = 85
+    namelist["grid"]["nz"] = 200 # 1700
+    namelist["grid"]["dz"] = 85  # 10
 
     namelist["time_stepping"]["adapt_dt"] = false
     namelist["time_stepping"]["t_max"] = 3600.0 * 24.0
@@ -343,7 +341,6 @@ function GATE_III(namelist_defaults)
     namelist["time_stepping"]["dt_min"] = 2.0
 
     namelist["microphysics"]["precipitation_model"] = "clima_1m" #"cutoff"
-    namelist["microphysics"]["τ_precip"] = 100.0
 
     namelist["meta"]["simname"] = "GATE_III"
     namelist["meta"]["casename"] = "GATE_III"
