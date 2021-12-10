@@ -135,7 +135,6 @@ import Rmath
 import RootSolvers
 import Roots
 import RuntimeGeneratedFunctions
-import SIMDPirates
 import SIMDTypes
 import SLEEFPirates
 import SafeTestsets
@@ -317,7 +316,6 @@ all_dirs_to_monitor = [
     mod_dir(RootSolvers),
     mod_dir(Roots),
     mod_dir(RuntimeGeneratedFunctions),
-    mod_dir(SIMDPirates),
     mod_dir(SIMDTypes),
     mod_dir(SLEEFPirates),
     mod_dir(SafeTestsets),
