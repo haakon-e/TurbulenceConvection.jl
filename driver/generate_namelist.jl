@@ -247,7 +247,7 @@ function Bomex(namelist_defaults)
     namelist["grid"]["nz"] = 60
     namelist["grid"]["dz"] = 50.0
 
-    namelist["time_stepping"]["t_max"] = 21600.0
+    namelist["time_stepping"]["t_max"] = 10800.0
     namelist["time_stepping"]["dt_min"] = 6.0
 
     namelist["meta"]["simname"] = "Bomex"

@@ -369,7 +369,7 @@ ENV["GKSwstype"] = "nul"
 
 all_cases = [
     # "ARM_SGP",
-    # "Bomex",
+    "Bomex",
     # "DryBubble",
     # "DYCOMS_RF01",
     # "GABLS",
@@ -379,7 +379,7 @@ all_cases = [
     # "Rico",
     # "Soares",
     # "SP",
-    "TRMM_LBA",
+    # "TRMM_LBA",
     # "LES_driven_SCM",
 ]
 
