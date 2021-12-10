@@ -51,7 +51,7 @@ function Simulation1d(namelist)
     param_set = create_parameter_set(namelist)
 
     FT = Float64
-    skip_io = namelist["stats_io"]["skip"]
+    skip_io = true
     adapt_dt = namelist["time_stepping"]["adapt_dt"]
     cfl_limit = namelist["time_stepping"]["cfl_limit"]
     dt_min = namelist["time_stepping"]["dt_min"]
@@ -185,6 +185,7 @@ function run(sim::Simulation1d; time_run = true)
     )
 
     callback_io = ODE.DiscreteCallback(condition_io, affect_io!; save_positions = (false, false))
+    callback_io = sim.skip_io ? () : (callback_io, )
     callback_cfl = ODE.DiscreteCallback(condition_every_iter, monitor_cfl!; save_positions = (false, false))
     callback_cfl = sim.Turb.Precip.precipitation_model == "clima_1m" ? (callback_cfl,) : ()
     callback_dtmax = ODE.DiscreteCallback(condition_every_iter, dt_max!; save_positions = (false, false))
@@ -192,7 +193,7 @@ function run(sim::Simulation1d; time_run = true)
     callback_adapt_dt = ODE.DiscreteCallback(condition_every_iter, adaptive_dt!; save_positions = (false, false))
     callback_adapt_dt = sim.adapt_dt ? (callback_adapt_dt,) : ()
 
-    callbacks = ODE.CallbackSet(callback_adapt_dt..., callback_dtmax, callback_cfl..., callback_filters, callback_io)
+    callbacks = ODE.CallbackSet(callback_adapt_dt..., callback_dtmax, callback_cfl..., callback_filters, callback_io...)
 
     prob = ODE.ODEProblem(TC.∑tendencies!, state.prog, t_span, params; dt = sim.TS.dt)
 
