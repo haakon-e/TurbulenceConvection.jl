@@ -113,8 +113,8 @@ function compute_diagnostics!(edmf, gm, grid, state, diagnostics, Case, TS)
         @. massflux_s += aux_up_f[i].massflux * (If(aux_up[i].s) - If(aux_en.s))
     end
 
-    up.lwp = 0.0
-    up.iwp = 0.0
+    up.lwp = sum(i->TC.∫field(grid, ρ0_c .* aux_up[i].q_liq .* aux_up[i].area .* (aux_up[i].area .> 1e-3)), 1:N_up)
+    up.iwp = sum(i->TC.∫field(grid, ρ0_c .* aux_up[i].q_ice .* aux_up[i].area .* (aux_up[i].area .> 1e-3)), 1:N_up)
 
     @inbounds for i in 1:(up.n_updrafts)
         up.cloud_base[i] = TC.zc_toa(grid)
@@ -123,9 +123,6 @@ function compute_diagnostics!(edmf, gm, grid, state, diagnostics, Case, TS)
 
         @inbounds for k in TC.real_center_indices(grid)
             if aux_up[i].area[k] > 1e-3
-                up.lwp += ρ0_c[k] * aux_up[i].q_liq[k] * aux_up[i].area[k] * grid.Δz
-                up.iwp += ρ0_c[k] * aux_up[i].q_ice[k] * aux_up[i].area[k] * grid.Δz
-
                 if TD.has_condensate(aux_up[i].q_liq[k] + aux_up[i].q_ice[k])
                     up.cloud_base[i] = min(up.cloud_base[i], grid.zc[k])
                     up.cloud_top[i] = max(up.cloud_top[i], grid.zc[k])
@@ -138,13 +135,11 @@ function compute_diagnostics!(edmf, gm, grid, state, diagnostics, Case, TS)
     en.cloud_top = 0.0
     en.cloud_base = TC.zc_toa(grid)
     en.cloud_cover = 0.0
-    en.lwp = 0.0
-    en.iwp = 0.0
+
+    en.lwp = TC.∫field(grid, ρ0_c .* aux_en.q_liq .* aux_en.area), 1:N_up)
+    en.iwp = TC.∫field(grid, ρ0_c .* aux_en.q_ice .* aux_en.area), 1:N_up)
 
     @inbounds for k in TC.real_center_indices(grid)
-        en.lwp += ρ0_c[k] * aux_en.q_liq[k] * aux_en.area[k] * grid.Δz
-        en.iwp += ρ0_c[k] * aux_en.q_ice[k] * aux_en.area[k] * grid.Δz
-
         if TD.has_condensate(aux_en.q_liq[k] + aux_en.q_ice[k]) && aux_en.area[k] > 1e-6
             en.cloud_base = min(en.cloud_base, grid.zc[k])
             en.cloud_top = max(en.cloud_top, grid.zc[k])

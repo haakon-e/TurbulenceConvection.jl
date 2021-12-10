@@ -67,3 +67,19 @@ transform_broadcasted(x, symb, axes) = x
     end
     return dest
 end
+
+∫field(grid::Grid, f::CC.Fields.CenterFiniteDifferenceField) =
+    ∫field(grid, f, grid.zc)
+∫field(grid::Grid, f::CC.Fields.FaceFiniteDifferenceField) =
+    ∫field(grid, f, grid.zf)
+
+function ∫field(grid::Grid, field, zgrid)
+    interpf = Dierckx.Spline1D(vec(zgrid), vec(field); k = 1)
+    integrand(_, params, z) = interpf(z)
+    z_span = (grid.zmin, grid.zmax)
+    params = (;)
+    # Assumes uniform grid spacing:
+    prob = ODE.ODEProblem(integrand, 0.0, z_span, params; dt = grid.Δz)
+    sol = ODE.solve(prob, ODE.Tsit5(), reltol = 1e-12, abstol = 1e-12)
+    return sol[end]
+end
