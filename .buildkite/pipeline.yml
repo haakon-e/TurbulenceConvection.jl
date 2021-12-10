@@ -7,12 +7,16 @@ env:
   BUILDKITE_COMMIT: "${BUILDKITE_COMMIT}"
   BUILDKITE_BRANCH: "${BUILDKITE_BRANCH}"
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/cpu"
+  JULIA_PKG_SERVER: ""
 
 steps:
   - label: "init :computer:"
     key: "init_cpu_env"
     command:
       - "echo $$JULIA_DEPOT_PATH"
+      - "julia --project=test -e 'using Pkg; Pkg.Registry.rm(\"General\")'"
+      - "julia --project=test -e 'using Pkg; Pkg.Registry.add(\"General\")'"
+      - "julia --project=test -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name=\"ClimaCore\", version=\"0.5.1\"))'"
       - "julia --project=test -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.precompile()'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
