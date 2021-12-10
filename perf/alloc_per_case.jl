@@ -9,9 +9,9 @@ case_name = ENV["ALLOCATION_CASE_NAME"]
 @info "Recording allocations for $case_name"
 sim = init_sim(case_name)
 tendencies = copy(sim.state.prog)
-update_n(sim, tendencies, 1) # compile first
+main(NameList.default_namelist(case_name)) # compile first
 Profile.clear_malloc_data()
-update_n(sim, tendencies, 1)
+main(NameList.default_namelist(case_name))
 
 # Quit julia (which generates .mem files), then call
 #=
