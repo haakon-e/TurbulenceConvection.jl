@@ -1,18 +1,3 @@
-function remove_precipitation_rain(param_set::APS, q::TD.PhasePartition{FT}) where {FT <: Real}
-
-    τ_precip_rain::FT = 2500.0
-    qc_0_rain::FT = 0.5e-3 #1.5 2.8 #3.0 #3.2 #3.5
-
-    return -max(0, (q.liq - qc_0_rain)) / τ_precip_rain
-end
-function remove_precipitation_snow(param_set::APS, q::TD.PhasePartition{FT}) where {FT <: Real}
-
-    τ_precip_snow::FT = 100.0
-    qc_0_snow::FT = 1e-6
-
-    return -max(0, (q.ice - qc_0_snow)) / τ_precip_snow
-end
-
 """
 Computes the tendencies to qt and θ_liq_ice due to precipitation formation
 (autoconversion + accretion)
@@ -54,9 +39,6 @@ function precipitation_formation(param_set::APS, precipitation_model, qr::FT, qs
             c_vm = TD.cv_m(ts)
             Rm = TD.gas_constant_air(ts)
             Lf = TD.latent_heat_fusion(ts)
-
-            qsat = TD.q_vap_saturation(ts)
-            λ = TD.liquid_fraction(ts)
 
             # Autoconversion of cloud ice to snow is done with a simplified rate.
             # The saturation adjustment scheme prevents using the
