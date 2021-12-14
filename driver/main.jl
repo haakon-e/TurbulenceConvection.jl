@@ -227,6 +227,94 @@ function run(sim::Simulation1d; time_run = true)
     end
 end
 
+struct SimpleODEProblem{ST, P, TS, NT, FT}
+    ∑tendencies!::ST
+    prog::P
+    t_span::TS
+    params::NT
+    Δt::FT
+end
+
+function simple_solve!(prob::SimpleODEProblem, alg::ODE.Euler, callbacks)
+    Δt = prob.Δt
+    FT = eltype(Δt)
+    n_steps = Int(round(last(prob.t_span) / Δt))
+    prog = prob.prog
+    tendencies = copy(prog)
+    ∑tendencies! = prob.∑tendencies!
+    params = prob.params
+    integrator = (; p = prob.params, u = prog, du = tendencies)
+    t = FT[first(prob.t_span)]
+    prog_face = prog.face
+    prog_cent = prog.cent
+    tendencies_face = tendencies.face
+    tendencies_cent = tendencies.cent
+    for i in 1:n_steps
+        ∑tendencies!(tendencies, prog, params, t[1])
+        @. prog_face += tendencies_face * Δt
+        @. prog_cent += tendencies_cent * Δt
+        for (cond, cb!) in callbacks
+            if cond(prog, t[1], integrator)
+                i == 1 && continue
+                cb!(integrator)
+            end
+        end
+        if mod(i, 100) == 0
+            println("t = $(t[1])")
+        end
+        t[1] += Δt
+    end
+end
+
+function run_simple(sim::Simulation1d; time_run = true)
+    TC = TurbulenceConvection
+    iter = 0
+    grid = sim.grid
+    state = sim.state
+    prog = state.prog
+    aux = state.aux
+    TS = sim.TS
+    diagnostics = sim.diagnostics
+    sim.skip_io || TC.open_files(sim.Stats) # #removeVarsHack
+
+    t_span = (0.0, sim.TS.t_max)
+    params = (;
+        edmf = sim.edmf,
+        grid = grid,
+        gm = sim.gm,
+        aux = aux,
+        io_nt = sim.io_nt,
+        case = sim.Case,
+        diagnostics = diagnostics,
+        TS = sim.TS,
+        Stats = sim.Stats,
+        skip_io = sim.skip_io,
+        adapt_dt = sim.adapt_dt,
+        cfl_limit = sim.cfl_limit,
+        dt_min = sim.dt_min,
+    )
+
+    callback_io = (condition_io, affect_io!)
+    callback_cfl = (condition_every_iter, monitor_cfl!)
+    callback_filters = (condition_every_iter, affect_filter!)
+    callback_cfl = sim.edmf.Precip.precipitation_model == "clima_1m" ? (callback_cfl,) : ()
+
+    callbacks = (callback_cfl..., callback_filters, callback_io)
+
+    prob = SimpleODEProblem(TC.∑tendencies!, state.prog, t_span, params, sim.TS.dt)
+
+    alg = ODE.Euler()
+
+    if time_run
+        @timev simple_solve!(prob, alg, callbacks)
+    else
+        simple_solve!(prob, alg, callbacks)
+    end
+
+    sim.skip_io || TC.close_files(sim.Stats) # #removeVarsHack
+    return :success
+end
+
 main(namelist; kwargs...) = @timev main1d(namelist; kwargs...)
 
 nc_results_file(stats::TC.NetCDFIO_Stats) = stats.path_plus_file
@@ -239,9 +327,11 @@ function main1d(namelist; time_run = true)
     sim = Simulation1d(namelist)
     TurbulenceConvection.initialize(sim, namelist)
     if time_run
-        return_code = @timev run(sim; time_run)
+        # return_code = @timev run(sim; time_run)
+        return_code = @timev run_simple(sim; time_run)
     else
-        return_code = run(sim)
+        # return_code = run(sim)
+        return_code = run_simple(sim)
     end
     return_code == :success && println("The simulation has completed.")
     return nc_results_file(sim.Stats), return_code

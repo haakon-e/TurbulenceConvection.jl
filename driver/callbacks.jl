@@ -34,7 +34,7 @@ function affect_io!(integrator)
     TC.io(case, grid, state, Stats) # #removeVarsHack
     TC.io(edmf, grid, state, Stats, TS, param_set) # #removeVarsHack
 
-    ODE.u_modified!(integrator, false) # We're legitamately not mutating `u` (the state vector)
+    # ODE.u_modified!(integrator, false) # We're legitamately not mutating `u` (the state vector)
 end
 
 function affect_filter!(integrator)
@@ -46,14 +46,14 @@ function affect_filter!(integrator)
     # paying for an additional `∑tendencies!` call, which is required
     # to support supplying a continuous representation of the
     # solution.
-    ODE.u_modified!(integrator, false)
+    # ODE.u_modified!(integrator, false)
 end
 
 function adaptive_dt!(integrator)
     UnPack.@unpack edmf, TS, dt_min = integrator.p
     TS.dt = min(TS.dt_max, max(edmf.dt_max, dt_min))
     SciMLBase.set_proposed_dt!(integrator, TS.dt)
-    ODE.u_modified!(integrator, false)
+    # ODE.u_modified!(integrator, false)
 end
 
 function dt_max!(integrator)
@@ -93,7 +93,7 @@ function dt_max!(integrator)
     end
     edmf.dt_max = dt_max
 
-    ODE.u_modified!(integrator, false)
+    # ODE.u_modified!(integrator, false)
 end
 
 function monitor_cfl!(integrator)
@@ -127,5 +127,5 @@ function monitor_cfl!(integrator)
         end
     end
 
-    ODE.u_modified!(integrator, false)
+    # ODE.u_modified!(integrator, false)
 end
