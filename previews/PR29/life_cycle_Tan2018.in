@@ -1,0 +1,51 @@
+{
+    "meta": {
+        "simname": "life_cycle_Tan2018",
+        "uuid": "jl_pbG1a9",
+        "casename": "life_cycle_Tan2018"
+    },
+    "microphysics": {
+        "rain_model": "None"
+    },
+    "output": {
+        "output_root": "./"
+    },
+    "thermodynamics": {
+        "thermal_variable": "thetal",
+        "quadrature_order": 3,
+        "sgs": "quadrature",
+        "quadrature_type": "log-normal"
+    },
+    "time_stepping": {
+        "t_max": 21600.0,
+        "dt": 30.0
+    },
+    "grid": {
+        "nz": 75,
+        "dz": 40.0,
+        "dims": 1,
+        "gw": 2
+    },
+    "stats_io": {
+        "stats_dir": "stats",
+        "frequency": 60.0
+    },
+    "turbulence": {
+        "EDMF_PrognosticTKE": {
+            "use_similarity_diffusivity": false,
+            "constant_area": false,
+            "calc_scalar_var": true,
+            "extrapolate_buoyancy": true,
+            "pressure_closure_buoy": "normalmode",
+            "mixing_length": "sbtd_eq",
+            "pressure_closure_drag": "normalmode",
+            "entrainment": "moisture_deficit",
+            "updraft_number": 1,
+            "pressure_closure_asp_label": "const",
+            "use_local_micro": true,
+            "use_constant_plume_spacing": false,
+            "calculate_tke": true
+        },
+        "scheme": "EDMF_PrognosticTKE"
+    }
+}

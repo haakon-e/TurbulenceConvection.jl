@@ -1,0 +1,51 @@
+{
+    "meta": {
+        "simname": "Rico",
+        "uuid": "jl_WJJDBg",
+        "casename": "Rico"
+    },
+    "microphysics": {
+        "rain_model": "clima_1m"
+    },
+    "output": {
+        "output_root": "./"
+    },
+    "thermodynamics": {
+        "thermal_variable": "thetal",
+        "quadrature_order": 3,
+        "sgs": "quadrature",
+        "quadrature_type": "log-normal"
+    },
+    "time_stepping": {
+        "t_max": 86400.0,
+        "dt": 20.0
+    },
+    "grid": {
+        "nz": 120,
+        "dz": 50.0,
+        "dims": 1,
+        "gw": 2
+    },
+    "stats_io": {
+        "stats_dir": "stats",
+        "frequency": 60.0
+    },
+    "turbulence": {
+        "EDMF_PrognosticTKE": {
+            "use_similarity_diffusivity": false,
+            "constant_area": false,
+            "calc_scalar_var": true,
+            "extrapolate_buoyancy": true,
+            "pressure_closure_buoy": "normalmode",
+            "mixing_length": "sbtd_eq",
+            "pressure_closure_drag": "normalmode",
+            "entrainment": "moisture_deficit",
+            "updraft_number": 1,
+            "pressure_closure_asp_label": "const",
+            "use_local_micro": true,
+            "use_constant_plume_spacing": false,
+            "calculate_tke": true
+        },
+        "scheme": "EDMF_PrognosticTKE"
+    }
+}
